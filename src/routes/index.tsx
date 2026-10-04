@@ -13,6 +13,7 @@ import {
 } from "#/components/ui/Card";
 import { Input } from "#/components/ui/Input";
 import indexCss from "#/css/index.css?url";
+import { loginSchema, signupSchema } from "#/lib/authSchemas";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
@@ -27,15 +28,63 @@ const field =
 	"transition-colors duration-200 hover:!border-white/25 hover:!bg-white/[0.09] " +
 	"focus-visible:!border-white/50 focus-visible:!bg-white/[0.10] focus-visible:!ring-0";
 
+const fieldClass = (hasError: boolean) =>
+	hasError
+		? `${field} !border-red-400/60 focus-visible:!border-red-400`
+		: field;
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+	if (!message) return null;
+	return (
+		<p id={id} role="alert" className="mt-1.5 text-xs text-red-400">
+			{message}
+		</p>
+	);
+}
+
 function App() {
 	const { userCount } = Route.useLoaderData();
 	const [mode, setMode] = useState<"signup" | "login">("signup");
 	const isSignup = mode === "signup";
 
+	const [errors, setErrors] = useState<Record<string, string>>({});
+
+	function clearError(key: string) {
+		setErrors((prev) => {
+			if (!prev[key]) return prev;
+			const { [key]: _removed, ...rest } = prev;
+			return rest;
+		});
+	}
+
+	function handleInput(e: React.ChangeEvent<HTMLInputElement>, key: string) {
+		e.target.value = e.target.value.toLowerCase();
+		clearError(key);
+	}
+
 	function onSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
-		// TODO:
+
+		const data = Object.fromEntries(new FormData(e.currentTarget));
+		const result = isSignup
+			? signupSchema.safeParse(data)
+			: loginSchema.safeParse(data);
+
+		if (!result.success) {
+			const next: Record<string, string> = {};
+			for (const issue of result.error.issues) {
+				const key = String(issue.path[0] ?? "");
+				if (key && !(key in next)) next[key] = issue.message;
+			}
+			setErrors(next);
+			return;
+		}
+
+		setErrors({});
+		console.log("validated", result.data);
 	}
+
+	const idKey = isSignup ? "email" : "handleOrEmail";
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -72,7 +121,7 @@ function App() {
 					</CardHeader>
 
 					<CardContent>
-						<form onSubmit={onSubmit} className="flex flex-col">
+						<form onSubmit={onSubmit} noValidate className="flex flex-col">
 							<div
 								className={`grid transition-[grid-template-rows] duration-300 ease-out ${
 									isSignup ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
@@ -81,35 +130,57 @@ function App() {
 								<div className="overflow-hidden">
 									<div className="pb-3">
 										<Input
-											name="username"
-											autoComplete="username"
-											placeholder="username"
-											aria-label="Username"
+											name="handle"
+											autoComplete="handle"
+											placeholder="handle"
+											aria-label="Handle"
+											aria-invalid={!!errors.handle}
+											aria-describedby={
+												errors.handle ? "handle-error" : undefined
+											}
 											disabled={!isSignup}
 											tabIndex={isSignup ? 0 : -1}
-											className={field}
+											onChange={(e) => handleInput(e, "handle")}
+											className={fieldClass(!!errors.handle)}
 										/>
+										<FieldError id="handle-error" message={errors.handle} />
 									</div>
 								</div>
 							</div>
 
 							<div className="flex flex-col gap-3">
-								<Input
-									name="email"
-									// type="email"
-									// autoComplete="email"
-									placeholder={isSignup ? "email" : "username or email"}
-									aria-label={isSignup ? "Email" : "Username or email"}
-									className={field}
-								/>
-								<Input
-									name="password"
-									type="password"
-									autoComplete={isSignup ? "new-password" : "current-password"}
-									placeholder="password"
-									aria-label="Password"
-									className={field}
-								/>
+								<div>
+									<Input
+										name={idKey}
+										placeholder={isSignup ? "email" : "handle or email"}
+										aria-label={isSignup ? "Email" : "handle or email"}
+										aria-invalid={!!errors[idKey]}
+										aria-describedby={errors[idKey] ? "id-error" : undefined}
+										onChange={(e) => handleInput(e, idKey)}
+										className={fieldClass(!!errors[idKey])}
+									/>
+									<FieldError id="id-error" message={errors[idKey]} />
+								</div>
+
+								<div>
+									<Input
+										name="password"
+										type="password"
+										autoComplete={
+											isSignup ? "new-password" : "current-password"
+										}
+										placeholder="password"
+										aria-label="Password"
+										aria-invalid={!!errors.password}
+										aria-describedby={
+											errors.password ? "password-error" : undefined
+										}
+										onChange={() => clearError("password")}
+										className={fieldClass(!!errors.password)}
+									/>
+									<FieldError id="password-error" message={errors.password} />
+								</div>
+
 								<Button
 									type="submit"
 									size="lg"
@@ -126,7 +197,10 @@ function App() {
 							{isSignup ? "Already have an account?" : "New here?"}{" "}
 							<button
 								type="button"
-								onClick={() => setMode(isSignup ? "login" : "signup")}
+								onClick={() => {
+									setMode(isSignup ? "login" : "signup");
+									setErrors({});
+								}}
 								className="cursor-pointer text-slate-300 underline decoration-slate-500 underline-offset-4 transition-all duration-200 hover:text-white hover:decoration-white hover:decoration-2"
 							>
 								{isSignup ? "Log in" : "Sign up"}
