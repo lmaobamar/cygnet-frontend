@@ -85,7 +85,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" asChild>
 							<Link
-								to="/feed"
+								to="/home"
 								onClick={closeMobileSidebar}
 								aria-label="Cygnet home"
 							>
@@ -105,7 +105,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>Explore</SidebarGroupLabel>
+					{/* <SidebarGroupLabel>Explore</SidebarGroupLabel> */}
 					<SidebarGroupContent>
 						<nav aria-label="Main navigation">
 							<SidebarMenu>
@@ -113,12 +113,12 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 									<SidebarMenuButton
 										asChild
 										tooltip="Home"
-										isActive={pathname === "/feed"}
+										isActive={pathname === "/home"}
 									>
 										<Link
-											to="/feed"
+											to="/home"
 											onClick={closeMobileSidebar}
-											aria-current={pathname === "/feed" ? "page" : undefined}
+											aria-current={pathname === "/home" ? "page" : undefined}
 										>
 											<Home aria-hidden="true" />
 											<span>Home</span>

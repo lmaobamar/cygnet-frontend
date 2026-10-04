@@ -55,7 +55,7 @@ function App() {
 	const submitting = useRef(false);
 
 	useEffect(() => {
-		if (user && !isLoading) void navigate({ to: "/feed", replace: true });
+		if (user && !isLoading) void navigate({ to: "/home", replace: true });
 	}, [user, isLoading, navigate]);
 	const [mode, setMode] = useState<"signup" | "login">("signup");
 	const isSignup = mode === "signup";
@@ -114,7 +114,7 @@ function App() {
 					password: credentials.password,
 				});
 			}
-			await navigate({ to: "/feed", replace: true });
+			await navigate({ to: "/home", replace: true });
 		} catch (cause) {
 			setSubmitError(
 				cause instanceof Error

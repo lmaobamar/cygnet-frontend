@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "#/components/ui/Button";
 import { useAuth } from "#/context/AuthContext";
 
-export const Route = createFileRoute("/_auth/feed")({ component: Feed });
+export const Route = createFileRoute("/_auth/home")({ component: Feed });
 
 function Feed() {
 	const navigate = useNavigate();

@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as AuthFeedRouteImport } from './routes/_auth/feed'
+import { Route as AuthHomeRouteImport } from './routes/_auth/home'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,32 +22,32 @@ const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthFeedRoute = AuthFeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
+const AuthHomeRoute = AuthHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => AuthRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/feed': typeof AuthFeedRoute
+  '/home': typeof AuthHomeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/feed': typeof AuthFeedRoute
+  '/home': typeof AuthHomeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
-  '/_auth/feed': typeof AuthFeedRoute
+  '/_auth/home': typeof AuthHomeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/feed'
+  fullPaths: '/' | '/home'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/feed'
-  id: '__root__' | '/' | '/_auth' | '/_auth/feed'
+  to: '/' | '/home'
+  id: '__root__' | '/' | '/_auth' | '/_auth/home'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -71,22 +71,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/feed': {
-      id: '/_auth/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof AuthFeedRouteImport
+    '/_auth/home': {
+      id: '/_auth/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AuthHomeRouteImport
       parentRoute: typeof AuthRoute
     }
   }
 }
 
 interface AuthRouteChildren {
-  AuthFeedRoute: typeof AuthFeedRoute
+  AuthHomeRoute: typeof AuthHomeRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthFeedRoute: AuthFeedRoute,
+  AuthHomeRoute: AuthHomeRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
