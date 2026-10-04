@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "#/components/ui/Button";
 import { useAuth } from "#/context/AuthContext";
 
-export const Route = createFileRoute("/feed")({ component: Feed });
+export const Route = createFileRoute("/_auth/feed")({ component: Feed });
 
 function Feed() {
 	const navigate = useNavigate();
@@ -30,7 +30,7 @@ function Feed() {
 	}
 
 	return (
-		<main className="min-h-svh bg-background px-4 py-8 text-foreground sm:px-8">
+		<section className="flex-1 bg-background px-4 py-8 text-foreground sm:px-8">
 			<div className="mx-auto max-w-3xl">
 				{error && (
 					<div role="alert" className="mb-6 text-destructive">
@@ -48,11 +48,9 @@ function Feed() {
 				{user ? (
 					<>
 						<h1 className="break-words text-3xl font-semibold">
-							Welcome, {user.display_name || user.handle}
+							Hello, {user.display_name}
 						</h1>
-						<p className="mt-2 text-muted-foreground">
-							Your feed will appear here.
-						</p>
+						<p className="mt-2 text-muted-foreground">Feed here</p>
 						{logoutError && (
 							<p role="alert" className="mt-4 text-destructive">
 								{logoutError}
@@ -76,6 +74,6 @@ function Feed() {
 					)
 				)}
 			</div>
-		</main>
+		</section>
 	);
 }
