@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Feather } from "lucide-react";
 import { useState } from "react";
 import LiquidChrome from "#/components/LiquidChrome";
@@ -31,11 +31,50 @@ function App() {
 	const { userCount } = Route.useLoaderData();
 	const [mode, setMode] = useState<"signup" | "login">("signup");
 	const isSignup = mode === "signup";
+	const navigate = useNavigate();
+	const [error, setError] = useState("");
+	const [loading, setLoading] = useState(false);
 
-	function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-		e.preventDefault();
-		// TODO:
+async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+	e.preventDefault();
+	setError("");
+	setLoading(true);
+
+	const form = new FormData(e.currentTarget);
+	const body = isSignup
+	    ? {
+			    handle: form.get("username"),
+				email: form.get("email"),
+				password: form.get("password"),
+		}
+	:  {
+		        email: form.get("email"),
+				password: form.get("password"),
+	};
+
+try {
+	const res = await fetch(
+		isSignup ? "/api/signup" : "/api/login",
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify(body),
+		},
+	);
+
+	if (!res.ok) {
+		const data = await res.json().catch(() => null );
+		setError(data?.error ?? `Something went wrong (${res.status})`);
+		return;
 	}
+navigate({ to: "/feed" });
+	} catch {
+		setError("could not reach server");
+	} finally {
+		setLoading(false);
+	}
+}
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -110,8 +149,9 @@ function App() {
 									aria-label="Password"
 									className={field}
 								/>
+								{error &&  <p className="text-sm text-red-400">{error}</p>}
 								<Button
-									type="submit"
+									type="submit" disabled={loading}
 									size="lg"
 									className="mt-1 h-11 cursor-pointer rounded-lg !bg-slate-300 text-slate-950 transition-all duration-200 hover:!bg-white hover:-translate-y-0.5 hover:shadow-[0_0_0_4px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.98]"
 								>
