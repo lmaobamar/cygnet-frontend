@@ -7,27 +7,12 @@ export const Route = createFileRoute("/_auth/home")({ component: Feed });
 
 function Feed() {
 	const navigate = useNavigate();
-	const { user, isLoading, error, logout, refetchUser } = useAuth();
-	const [logoutError, setLogoutError] = useState<string | null>(null);
+	const { user, isLoading, error, refetchUser } = useAuth();
 
 	useEffect(() => {
 		if (!isLoading && !user && !error)
 			void navigate({ to: "/", replace: true });
 	}, [isLoading, user, error, navigate]);
-
-	async function handleLogout() {
-		setLogoutError(null);
-		try {
-			await logout();
-			await navigate({ to: "/", replace: true });
-		} catch (cause) {
-			setLogoutError(
-				cause instanceof Error
-					? cause.message
-					: "Unable to log out. Please try again.",
-			);
-		}
-	}
 
 	return (
 		<section className="flex-1 bg-background px-4 py-8 text-foreground sm:px-8">
@@ -51,20 +36,6 @@ function Feed() {
 							Hello, {user.display_name}
 						</h1>
 						<p className="mt-2 text-muted-foreground">Feed here</p>
-						{logoutError && (
-							<p role="alert" className="mt-4 text-destructive">
-								{logoutError}
-							</p>
-						)}
-						<Button
-							type="button"
-							variant="outline"
-							onClick={handleLogout}
-							disabled={isLoading}
-							className="mt-6"
-						>
-							{isLoading ? "Please wait…" : "Log out"}
-						</Button>
 					</>
 				) : (
 					!error && (
