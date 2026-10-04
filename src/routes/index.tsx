@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Feather } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LiquidChrome from "#/components/LiquidChrome";
 import { Button } from "#/components/ui/Button";
 import {
@@ -32,6 +32,13 @@ function App() {
 	const [mode, setMode] = useState<"signup" | "login">("signup");
 	const isSignup = mode === "signup";
 	const navigate = useNavigate();
+	useEffect(() => {
+		fetch("/api/me", { credentials: "include" })
+		    .then((res) => {
+				if (res.ok) navigate({ to:"/feed"});
+			})
+			.catch(() => {});
+	}, [navigate]);
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
 
@@ -65,7 +72,21 @@ try {
 
 	if (!res.ok) {
 		const data = await res.json().catch(() => null );
-		setError(data?.error ?? `Something went wrong (${res.status})`);
+		const fieldMessages = Array.isArray(data?.fields)
+		    ? data.fields
+			        .map(
+						(f: { field?: string; message?:string }) =>
+							`${f.field}: ${f.message}`,
+					)
+					.join(", ")
+			: "";
+	    const message = [
+			fieldMessages,
+			data?.message,
+			typeof data?.error === "string" ? data.error : data?.error?.message,
+		].find((m) => typeof m === "string" && m);
+
+		setError(message ?? `Something went wrong (${res.status})`);
 		return;
 	}
 navigate({ to: "/feed" });
@@ -137,7 +158,7 @@ navigate({ to: "/feed" });
 									name="email"
 									// type="email"
 									// autoComplete="email"
-									placeholder={isSignup ? "email" : "username or email"}
+									placeholder="email"
 									aria-label={isSignup ? "Email" : "Username or email"}
 									className={field}
 								/>
