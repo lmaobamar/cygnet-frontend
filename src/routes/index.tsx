@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Feather } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import LiquidChrome from "#/components/LiquidChrome";
 import { Button } from "#/components/ui/Button";
 import {
@@ -46,68 +46,45 @@ function App() {
 	const { userCount } = Route.useLoaderData();
 	const [mode, setMode] = useState<"signup" | "login">("signup");
 	const isSignup = mode === "signup";
-	const navigate = useNavigate();
-	useEffect(() => {
-		fetch("/api/me", { credentials: "include" })
-			.then((res) => {
-				if (res.ok) navigate({ to: "/feed" });
-			})
-			.catch(() => {});
-	}, [navigate]);
-	const [error, setError] = useState("");
-	const [loading, setLoading] = useState(false);
 
-	async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-		e.preventDefault();
-		setError("");
-		setLoading(true);
+	const [errors, setErrors] = useState<Record<string, string>>({});
 
-		const form = new FormData(e.currentTarget);
-		const body = isSignup
-			? {
-					handle: form.get("username"),
-					email: form.get("email"),
-					password: form.get("password"),
-				}
-			: {
-					email: form.get("email"),
-					password: form.get("password"),
-				};
-
-		try {
-			const res = await fetch(isSignup ? "/api/signup" : "/api/login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify(body),
-			});
-
-			if (!res.ok) {
-				const data = await res.json().catch(() => null);
-				const fieldMessages = Array.isArray(data?.fields)
-					? data.fields
-							.map(
-								(f: { field?: string; message?: string }) =>
-									`${f.field}: ${f.message}`,
-							)
-							.join(", ")
-					: "";
-				const message = [
-					fieldMessages,
-					data?.message,
-					typeof data?.error === "string" ? data.error : data?.error?.message,
-				].find((m) => typeof m === "string" && m);
-
-				setError(message ?? `Something went wrong (${res.status})`);
-				return;
-			}
-			navigate({ to: "/feed" });
-		} catch {
-			setError("could not reach server");
-		} finally {
-			setLoading(false);
-		}
+	function clearError(key: string) {
+		setErrors((prev) => {
+			if (!prev[key]) return prev;
+			const { [key]: _removed, ...rest } = prev;
+			return rest;
+		});
 	}
+
+	function handleInput(e: React.ChangeEvent<HTMLInputElement>, key: string) {
+		e.target.value = e.target.value.toLowerCase();
+		clearError(key);
+	}
+
+	function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+		e.preventDefault();
+
+		const data = Object.fromEntries(new FormData(e.currentTarget));
+		const result = isSignup
+			? signupSchema.safeParse(data)
+			: loginSchema.safeParse(data);
+
+		if (!result.success) {
+			const next: Record<string, string> = {};
+			for (const issue of result.error.issues) {
+				const key = String(issue.path[0] ?? "");
+				if (key && !(key in next)) next[key] = issue.message;
+			}
+			setErrors(next);
+			return;
+		}
+
+		setErrors({});
+		console.log("validated", result.data);
+	}
+
+	const idKey = isSignup ? "email" : "handleOrEmail";
 
 	return (
 		<div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
@@ -172,26 +149,55 @@ function App() {
 							</div>
 
 							<div className="flex flex-col gap-3">
-								<Input
-									name="email"
-									// type="email"
-									// autoComplete="email"
-									placeholder="email"
-									aria-label={isSignup ? "Email" : "Username or email"}
-									className={field}
-								/>
-								<Input
-									name="password"
-									type="password"
-									autoComplete={isSignup ? "new-password" : "current-password"}
-									placeholder="password"
-									aria-label="Password"
-									className={field}
-								/>
-								{error && <p className="text-sm text-red-400">{error}</p>}
+								<div>
+									<Input
+										name={idKey}
+										placeholder={isSignup ? "email" : "handle or email"}
+										aria-label={isSignup ? "Email" : "handle or email"}
+										aria-invalid={!!errors[idKey]}
+										aria-describedby={errors[idKey] ? "id-error" : undefined}
+										onChange={(e) => handleInput(e, idKey)}
+										className={fieldClass(!!errors[idKey])}
+									/>
+									<FieldError id="id-error" message={errors[idKey]} />
+								</div>
+
+								<div>
+									<Input
+										name="password"
+										type="password"
+										autoComplete={
+											isSignup ? "new-password" : "current-password"
+										}
+										placeholder="password"
+										aria-label="Password"
+										aria-invalid={!!errors.password}
+										aria-describedby={
+											errors.password ? "password-error" : undefined
+										}
+										onChange={() => clearError("password")}
+										className={fieldClass(!!errors.password)}
+									/>
+									<FieldError id="password-error" message={errors.password} />
+								</div>
+
+								<div>
+									<Input
+										name={"displayName"}
+										placeholder={"display name (optional)"}
+										aria-label={"display name (optional)"}
+										aria-invalid={!!errors.displayName}
+										aria-describedby={
+											errors.displayName ? "id-error" : undefined
+										}
+										onChange={() => clearError("displayName")}
+										className={fieldClass(!!errors.displayName)}
+									/>
+									<FieldError id="id-error" message={errors.displayName} />
+								</div>
+
 								<Button
 									type="submit"
-									disabled={loading}
 									size="lg"
 									className="mt-1 h-11 cursor-pointer rounded-lg !bg-slate-300 text-slate-950 transition-all duration-200 hover:!bg-white hover:-translate-y-0.5 hover:shadow-[0_0_0_4px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.98]"
 								>
