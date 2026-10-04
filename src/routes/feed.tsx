@@ -1,42 +1,81 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Button } from "#/components/ui/Button";
+import { useAuth } from "#/context/AuthContext";
 
-export const Route = createFileRoute("/feed")({
-	component: Feed,
-});
+export const Route = createFileRoute("/feed")({ component: Feed });
 
 function Feed() {
 	const navigate = useNavigate();
-	const [me, setMe] = useState<{ handle?: string; email?: string } | null>(
-		null,
-	);
+	const { user, isLoading, error, logout, refetchUser } = useAuth();
+	const [logoutError, setLogoutError] = useState<string | null>(null);
 
 	useEffect(() => {
-		fetch("/api/me", { credentials: "include" })
-			.then((res) => {
-				if (!res.ok) throw new Error("not logged in");
-				return res.json();
-			})
-			.then(setMe)
-			.catch(() => navigate({ to: "/" }));
-	}, [navigate]);
+		if (!isLoading && !user && !error)
+			void navigate({ to: "/", replace: true });
+	}, [isLoading, user, error, navigate]);
 
-	async function logout() {
-		await fetch("/api/logout", { method: "POST", credentials: "include" });
-		navigate({ to: "/" });
+	async function handleLogout() {
+		setLogoutError(null);
+		try {
+			await logout();
+			await navigate({ to: "/", replace: true });
+		} catch (cause) {
+			setLogoutError(
+				cause instanceof Error
+					? cause.message
+					: "Unable to log out. Please try again.",
+			);
+		}
 	}
 
-	if (!me) return <p className="p-8 text-slate-100">Loading...</p>;
-
 	return (
-		<div className="min-h-screen bg-slate-950 p-8 text-slate-100">
-			<h1 className="text-3xl font-semibold">
-				Welcome, {me.handle ?? me.email}
-			</h1>
-			<p className="mt-2  text-slate-400"> YOUR FEED WILL GO HERE.</p>
-			<button type="button" onClick={logout} className="mt-6 underline">
-				Log Out
-			</button>
-		</div>
+		<main className="min-h-svh bg-background px-4 py-8 text-foreground sm:px-8">
+			<div className="mx-auto max-w-3xl">
+				{error && (
+					<div role="alert" className="mb-6 text-destructive">
+						<p>{error}</p>
+						<Button
+							className="mt-3"
+							variant="outline"
+							onClick={() => void refetchUser()}
+							disabled={isLoading}
+						>
+							Retry session check
+						</Button>
+					</div>
+				)}
+				{user ? (
+					<>
+						<h1 className="break-words text-3xl font-semibold">
+							Welcome, {user.display_name || user.handle}
+						</h1>
+						<p className="mt-2 text-muted-foreground">
+							Your feed will appear here.
+						</p>
+						{logoutError && (
+							<p role="alert" className="mt-4 text-destructive">
+								{logoutError}
+							</p>
+						)}
+						<Button
+							type="button"
+							variant="outline"
+							onClick={handleLogout}
+							disabled={isLoading}
+							className="mt-6"
+						>
+							{isLoading ? "Please wait…" : "Log out"}
+						</Button>
+					</>
+				) : (
+					!error && (
+						<output>
+							{isLoading ? "Loading your session…" : "Returning to login…"}
+						</output>
+					)
+				)}
+			</div>
+		</main>
 	);
 }

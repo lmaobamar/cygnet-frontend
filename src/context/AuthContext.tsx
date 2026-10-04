@@ -1,104 +1,137 @@
-// import {
-// 	createContext,
-// 	type ReactNode,
-// 	useCallback,
-// 	useContext,
-// 	useEffect,
-// 	useState,
-// } from "react";
-// import {
-// 	login as apiLogin,
-// 	logout as apiLogout,
-// 	signup as apiSignup,
-// 	type LoginInBody,
-// 	me,
-// 	type SelfUser,
-// 	type SignupInBody,
-// } from "#/client";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import type { LoginInBody, SelfUser, SignupInBody } from "#/client";
+import {
+	AuthError,
+	login as apiLogin,
+	logout as apiLogout,
+	signup as apiSignup,
+	me,
+} from "#/lib/api";
 
-// interface AuthContextType {
-// 	user: SelfUser | null;
-// 	isLoading: boolean;
-// 	login: (credentials: LoginInBody) => Promise<SelfUser>;
-// 	signup: (credentials: SignupInBody) => Promise<SelfUser>;
-// 	logout: () => Promise<void>;
-// 	refetchUser: () => Promise<void>;
-// }
+interface AuthContextType {
+	user: SelfUser | null;
+	isLoading: boolean;
+	error: string | null;
+	login: (credentials: LoginInBody) => Promise<SelfUser>;
+	signup: (credentials: SignupInBody) => Promise<SelfUser>;
+	logout: () => Promise<void>;
+	refetchUser: () => Promise<void>;
+}
 
-// const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// export function AuthProvider({ children }: { children: ReactNode }) {
-// 	const [user, setUser] = useState<SelfUser | null>(null);
-// 	const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children }: { children: ReactNode }) {
+	const [user, setUser] = useState<SelfUser | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+	const requestVersion = useRef(0);
 
-// 	const refetchUser = useCallback(async () => {
-// 		try {
-// 			const response = await me();
-// 			if (response.data) {
-// 				const { $schema, ...userData } = response.data;
-// 				setUser(userData);
-// 			} else {
-// 				setUser(null);
-// 			}
-// 		} catch (e) {
-// 			console.log(`refetchUser err: ${e}`);
-// 			setUser(null);
-// 		} finally {
-// 			console.log(`refetchUser pass done user is ${user}`);
-// 			setIsLoading(false);
-// 		}
-// 	}, [user]);
+	const refetchUser = useCallback(async () => {
+		const version = ++requestVersion.current;
+		setIsLoading(true);
+		setError(null);
+		try {
+			const response = await me();
+			if (version !== requestVersion.current) return;
+			if (response.response?.status === 401) {
+				setUser(null);
+			} else if (response.error || !response.data) {
+				throw new AuthError(
+					response.error,
+					"Unable to check your session. Please try again.",
+				);
+			} else {
+				setUser(response.data);
+			}
+		} catch (cause) {
+			if (version === requestVersion.current) {
+				setError(
+					cause instanceof Error
+						? cause.message
+						: "Unable to check your session.",
+				);
+			}
+		} finally {
+			if (version === requestVersion.current) setIsLoading(false);
+		}
+	}, []);
 
-// 	useEffect(() => {
-// 		refetchUser();
-// 	}, [refetchUser]);
+	useEffect(() => {
+		void refetchUser();
+		return () => {
+			requestVersion.current++;
+		};
+	}, [refetchUser]);
 
-// 	const login = async (credentials: LoginInBody): Promise<SelfUser> => {
-// 		const response = await apiLogin({ body: credentials });
-// 		if (response.error || !response.data) {
-// 			throw response.error ?? new Error("Login failed");
-// 		}
-// 		const { $schema, ...userData } = response.data;
-// 		setUser(userData);
-// 		return userData;
-// 	};
+	const authenticate = useCallback(
+		async (credentials: LoginInBody | SignupInBody, isSignup: boolean) => {
+			const version = ++requestVersion.current;
+			setIsLoading(true);
+			setError(null);
+			try {
+				const response = isSignup
+					? await apiSignup({ body: credentials as SignupInBody })
+					: await apiLogin({ body: credentials as LoginInBody });
+				if (response.error || !response.data) {
+					throw new AuthError(
+						response.error,
+						isSignup ? "Unable to create your account." : "Unable to log in.",
+					);
+				}
+				if (version === requestVersion.current) setUser(response.data);
+				return response.data;
+			} finally {
+				if (version === requestVersion.current) setIsLoading(false);
+			}
+		},
+		[],
+	);
 
-// 	const signup = async (credentials: SignupInBody): Promise<SelfUser> => {
-// 		const response = await apiSignup({ body: credentials });
-// 		if (response.error || !response.data) {
-// 			throw response.error ?? new Error("Signup failed");
-// 		}
-// 		const { $schema, ...userData } = response.data;
-// 		setUser(userData);
-// 		return userData;
-// 	};
+	const login = useCallback(
+		(credentials: LoginInBody) => authenticate(credentials, false),
+		[authenticate],
+	);
+	const signup = useCallback(
+		(credentials: SignupInBody) => authenticate(credentials, true),
+		[authenticate],
+	);
+	const logout = useCallback(async () => {
+		const version = ++requestVersion.current;
+		setIsLoading(true);
+		setError(null);
+		try {
+			const response = await apiLogout();
+			if (response.error || !response.response?.ok) {
+				throw new AuthError(
+					response.error,
+					"Unable to log out. Please try again.",
+				);
+			}
+			if (version === requestVersion.current) setUser(null);
+		} finally {
+			if (version === requestVersion.current) setIsLoading(false);
+		}
+	}, []);
 
-// 	const logout = async () => {
-// 		try {
-// 			await apiLogout();
-// 		} finally {
-// 			setUser(null);
-// 		}
-// 	};
+	return (
+		<AuthContext.Provider
+			value={{ user, isLoading, error, login, signup, logout, refetchUser }}
+		>
+			{children}
+		</AuthContext.Provider>
+	);
+}
 
-// 	return (
-// 		<AuthContext.Provider
-// 			value={{
-// 				user,
-// 				isLoading,
-// 				login,
-// 				signup,
-// 				logout,
-// 				refetchUser,
-// 			}}
-// 		></AuthContext.Provider>
-// 	);
-// }
-
-// export function useAuth() {
-// 	const context = useContext(AuthContext);
-// 	if (!context) {
-// 		throw new Error("useAuth must be used within an AuthProvider");
-// 	}
-// 	return context;
-// }
+export function useAuth() {
+	const context = useContext(AuthContext);
+	if (!context) throw new Error("useAuth must be used within an AuthProvider");
+	return context;
+}
